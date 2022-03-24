@@ -7,7 +7,10 @@ const ChannelEventsHandler = (flex, manager) => {
 
     // Everytime a new chat is assignment to the agent, we need to add some listeners for events
     manager.chatClient.on("channelAdded", channel => {
-        channel.attributes.activated = true;
+        channel.updateAttributes({
+            ...channel.attributes,
+            activated: true
+        })
         FlexStateSingleton.dispatchStoreAction(Actions.increasedActiveChat())
 
 
@@ -17,6 +20,7 @@ const ChannelEventsHandler = (flex, manager) => {
             if (payload.updateReasons.includes("attributes") && payload.channel.attributes.status == "INACTIVE") {
                 console.log("Chat completado")
 
+                console.log("Capacities", payload.channel.attributes.activated)
                 if (payload.channel.attributes.activated == false) {
                     FlexStateSingleton.dispatchStoreAction(Actions.decreasedInactiveChat())
                     // Expired Chat
@@ -42,7 +46,11 @@ const ChannelEventsHandler = (flex, manager) => {
 
             FlexStateSingleton.dispatchStoreAction(Actions.deacticateChat())
             utils.evaluateCapacity();
-            payload.attributes.activated = false;
+            channel.updateAttributes({
+                ...channel.attributes,
+                activated: false
+            })
+
         })
 
         channel.on("messageAdded", (message) => {
@@ -51,13 +59,18 @@ const ChannelEventsHandler = (flex, manager) => {
                 FlexStateSingleton.dispatchStoreAction(Actions.reacticateChat())
                 // Check for capacity if activeChats == default capacity -> setCapacity to defaultCap + inactiveChats
             }
-            channel.attributes.activated = true;
+            channel.updateAttributes({
+                ...channel.attributes,
+                activated: true
+            })
+
             utils.evaluateCapacity();
 
 
             // Sample solution to inactivate chats
             // Check if the channel status still active, if this chat is currently activated and if the message that fired this event will be the last message after x second
             setTimeout(() => {
+                console.log("Capacities", channel.attributes.status, channel.attributes.activated, message.index, channel.lastMessage.index)
                 if (channel.attributes.status == "ACTIVE" && channel.attributes.activated == true && message.index == channel.lastMessage.index) {
                     channel.emit("inactivated", channel);
                 }
