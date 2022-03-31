@@ -36,7 +36,7 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
         channels } = evaluateInactivity();
       FlexState.dispatchStoreAction(Actions.updateChats(activeCount, inactiveCount))
       await utils.evaluateCapacity()
-    }, 5000)
+    }, 10000)
   }
 
   /**
