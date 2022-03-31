@@ -3,9 +3,9 @@ import { VERSION } from '@twilio/flex-ui';
 import { FlexPlugin } from '@twilio/flex-plugin';
 
 import reducers, { namespace } from './states';
-import registerEventsHandler from "./events";
 import { evaluateInactivity } from "./utils/channels"
 import utils from "./utils/utils"
+import FlexState from './states/FlexState';
 import { Actions } from "./states/capacityState"
 
 
@@ -26,13 +26,17 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
   async init(flex, manager) {
     this.registerReducers(manager);
 
+
+    // Loop to verify how many chat are active/inactive
+    // Update the state with the results
+    // Call Function to check logic and update worker capacity
     setInterval(async () => {
       const { activeCount,
         inactiveCount,
         channels } = evaluateInactivity();
-      Actions.updateChats(activeCount, inactiveCount)
+      FlexState.dispatchStoreAction(Actions.updateChats(activeCount, inactiveCount))
       await utils.evaluateCapacity()
-    }, 20000)
+    }, 5000)
   }
 
   /**

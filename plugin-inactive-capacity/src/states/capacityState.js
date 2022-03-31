@@ -7,7 +7,7 @@ const DEACTIVATE_CHAT = 'DEACTIVATE_CHAT';
 const UPDATE_CHATS = 'UPDATE_CHATS';
 
 const MAX_INACTIVE_CHAT = process.env.MAX_INACTIVE_CHAT || 5;
-const MAX_ACTIVE_CHAT = process.env.MAX_ACTIVE_CHAT || 2;
+const MAX_ACTIVE_CHAT = process.env.MAX_ACTIVE_CHAT || 1;
 
 const initialState = {
   inactiveChats: 0,
@@ -35,6 +35,10 @@ export class Actions {
 }
 
 export function reduce(state = initialState, action) {
+  console.log("Capacities State", {
+    ...state,
+    ...action.params
+  })
   switch (action.type) {
     case INCREASE_ACTIVE: {
       return {

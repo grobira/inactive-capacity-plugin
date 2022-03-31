@@ -9,7 +9,7 @@ const evaluateCapacity = async () => {
 
   const workerSid = FlexState.workerSid;
 
-  console.log("Capacities", { maxInactiveCapacity, defaultCapacity, activeChats, inactiveChats, workerSid })
+  console.log("Capacity State", { maxInactiveCapacity, defaultCapacity, activeChats, inactiveChats, workerSid })
 
   const requestOptions = {
     method: 'POST',
@@ -19,7 +19,7 @@ const evaluateCapacity = async () => {
   try {
     const response = await fetch(`${baseServerlessUrl}/updateCapacity`, requestOptions);
     const data = await response.json();
-    console.log("Capacities", { newCapacity: data.capacity })
+    console.log("New Capacity", { newCapacity: data.capacity })
     return data.capacity;
   } catch (e) {
     console.log(e);
