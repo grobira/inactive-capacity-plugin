@@ -4,12 +4,16 @@ const INCREASE_INACTIVE = 'INCREASE_INACTIVE';
 const DECREASE_INACTIVE = 'DECREASE_INACTIVE';
 const REACTIVATE_CHAT = 'REACTIVATE_CHAT';
 const DEACTIVATE_CHAT = 'DEACTIVATE_CHAT';
+const UPDATE_CHATS = 'UPDATE_CHATS';
+
+const MAX_INACTIVE_CHAT = process.env.MAX_INACTIVE_CHAT || 5;
+const MAX_ACTIVE_CHAT = process.env.MAX_ACTIVE_CHAT || 2;
 
 const initialState = {
   inactiveChats: 0,
   activeChats: 0,
-  maxInactiveCapacity: 3,
-  defaultCapacity: 1,
+  maxInactiveCapacity: MAX_INACTIVE_CHAT,
+  defaultCapacity: MAX_ACTIVE_CHAT,
 };
 
 export class Actions {
@@ -24,6 +28,8 @@ export class Actions {
   static reacticateChat = () => ({ type: REACTIVATE_CHAT });
 
   static deacticateChat = () => ({ type: DEACTIVATE_CHAT });
+
+  static updateChats = (activeChats, inactiveChats) => ({ type: UPDATE_CHATS, params: { activeChats, inactiveChats } });
 
 
 }
@@ -66,6 +72,12 @@ export function reduce(state = initialState, action) {
         ...state,
         activeChats: state.activeChats - 1 >= 0 ? state.activeChats - 1 : 0,
         inactiveChats: state.inactiveChats + 1,
+      };
+    }
+    case UPDATE_CHATS: {
+      return {
+        ...state,
+        ...action.params
       };
     }
 

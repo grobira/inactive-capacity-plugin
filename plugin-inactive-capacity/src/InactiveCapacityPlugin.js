@@ -3,11 +3,13 @@ import { VERSION } from '@twilio/flex-ui';
 import { FlexPlugin } from '@twilio/flex-plugin';
 
 import reducers, { namespace } from './states';
-import registerEventsHandler from "./events"
+import registerEventsHandler from "./events";
+import { evaluateInactivity } from "./utils/channels"
+import utils from "./utils/utils"
+import { Actions } from "./states/capacityState"
+
 
 const PLUGIN_NAME = 'InactiveCapacityPlugin';
-
-import utils from "./utils/utils"
 
 export default class InactiveCapacityPlugin extends FlexPlugin {
   constructor () {
@@ -24,10 +26,13 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
   async init(flex, manager) {
     this.registerReducers(manager);
 
-    registerEventsHandler(flex, manager);
-
-    utils.resetCapacity(manager);
-
+    setInterval(async () => {
+      const { activeCount,
+        inactiveCount,
+        channels } = evaluateInactivity();
+      Actions.updateChats(activeCount, inactiveCount)
+      await utils.evaluateCapacity()
+    }, 20000)
   }
 
   /**
