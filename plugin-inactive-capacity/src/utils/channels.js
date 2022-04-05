@@ -2,7 +2,7 @@ import FlexStateSingleton from "../states/FlexState"
 import { ChatChannelHelper, StateHelper } from "@twilio/flex-ui";
 import { updateTaskApi } from "../service";
 
-const TIME_FOR_INACTIVE = process.env.TIME_FOR_INACTIVE || 1;
+const TIME_FOR_INACTIVE = process.env.REACT_APP_TIME_FOR_INACTIVE || 1;
 
 
 const isTimerPausedForTask = (task) => {

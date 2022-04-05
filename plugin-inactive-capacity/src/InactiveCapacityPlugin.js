@@ -14,6 +14,8 @@ import { getWorkerChannelsApi, resetCapacityApi } from "./service"
 
 const PLUGIN_NAME = 'InactiveCapacityPlugin';
 
+const UPDATE_FREQ = process.env.REACT_APP_UPDATE_FREQ || 10000;
+
 export default class InactiveCapacityPlugin extends FlexPlugin {
   constructor () {
     super(PLUGIN_NAME);
@@ -46,7 +48,7 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
         channels } = evaluateInactivity();
       FlexState.dispatchStoreAction(Actions.updateChats(activeCount, inactiveCount))
       await evaluateCapacity()
-    }, 10000)
+    }, UPDATE_FREQ)
   }
 
   /**
