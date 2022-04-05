@@ -66,7 +66,7 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
 
   createInactiveChatDefinition(flex, manager) {
     const inactiveChatChannelDefinition = flex.DefaultTaskChannels.createChatTaskChannel("InactiveChat",
-      (task) => task.taskChannelUniqueName === "chat" && task.attributes.activated == false, "Whatsapp", "WhatsappBold", "#a6a6a6");
+      (task) => task.taskChannelUniqueName === "chat" && task.attributes.activated == false, "Whatsapp", "WhatsappBold", "#afb3a5");
 
     inactiveChatChannelDefinition.addedComponents = [
       {

@@ -14,7 +14,7 @@ export class ActiveBubble extends Component {
             marginTop: "5px",
             width: "91px",
             height: "19px",
-            backgroundColor: "#a6a6a6",
+            backgroundColor: "#f2c037",
             textAlign: "center",
             borderRadius: "25px",
             border: "0px"
