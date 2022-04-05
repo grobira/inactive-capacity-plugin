@@ -1,26 +1,37 @@
 import FlexStateSingleton from "../states/FlexState"
 import { ChatChannelHelper, StateHelper } from "@twilio/flex-ui";
+import { updateTaskApi } from "../service";
 
 const TIME_FOR_INACTIVE = process.env.TIME_FOR_INACTIVE || 1;
 
 
+const isTimerPausedForTask = (task) => {
+    const inactivityTimer = task.attributes.inactivityTimer || {};
+    return !!inactivityTimer.pausedSince
+};
+
 const countInactiveChats = (channels) => {
-    const activeChannels = channels.filter(isActive)
+    const activeChannels = channels.filter(isActivated)
     return channels.length - activeChannels.length;
 }
 
 const countActiveChats = (channels) => {
-    const activeChannels = channels.filter(isActive)
+    const activeChannels = channels.filter(isActivated)
     return activeChannels.length;
 }
 
 const isActive = (channel) => {
-    const lastMessage = channel.lastMessage.source || channel.lastMessage;
+    const lastMessage = channel.lastMessage ? channel.lastMessage.source || channel.lastMessage : null;
     const current = new Date();
-    if (Math.floor((current.getTime() - lastMessage.timestamp.getTime()) / 60000) > TIME_FOR_INACTIVE && channel.lastMessage.isFromMe) {
+    if (lastMessage && Math.floor((current.getTime() - lastMessage.timestamp.getTime()) / 60000) >= TIME_FOR_INACTIVE && channel.lastMessage.isFromMe) {
         return false;
     }
     return true;
+}
+
+const isActivated = (channel) => {
+    const { task } = channel;
+    return (task.attributes.activated == true || task.attributes.activated == null) && (!isTimerPausedForTask(task));
 }
 
 const getWorkerChannels = () => {
@@ -32,15 +43,44 @@ const getWorkerChannels = () => {
         return {
             ...channelState,
             lastMessage: chatChannelHelper.lastMessage,
+            task
         };
     })
 
     return channels;
 }
 
+const checkChannelActivity = async (channels) => {
+    const channelsPromises = channels.map(async channel => {
+        console.log("ChannelActivity", channel)
+
+        const { task } = channel;
+        const activated = task.attributes.activated;
+        if (!isActive(channel) && (activated == null || activated == true)) {
+            // update task to inactive
+            console.log("isActive inactive", task)
+
+            await updateTaskApi(task, {
+                activated: false,
+                inactiveTime: new Date().getTime()
+            })
+        } else if (isActive(channel) && activated == false) {
+            // await update task to active
+            console.log("isActive", task)
+
+            await updateTaskApi(task, {
+                activated: true
+            })
+        }
+    });
+
+    return await Promise.all(channelsPromises)
+}
+
 const evaluateInactivity = () => {
 
     const channels = getWorkerChannels();
+    checkChannelActivity(channels)
     return {
         activeCount: countActiveChats(channels),
         inactiveCount: countInactiveChats(channels),
@@ -53,26 +93,6 @@ const orderByLastMessage = (channel1, channel2) => {
     if (channel1.lastMessage.timestamp < channel2.lastMessage.timestamp) return 1;
     return 0;
 }
-
-const orderByLastMessageAndInactivity = (channel1, channel2) => {
-    if (channel1.attributes.activated == null) {
-        return -1;
-    }
-    if (channel1.attributes.activated && !channel2.attributes.activated) {
-        return -1;
-    }
-    if (!channel1.attributes.activated && channel2.attributes.activated) {
-        return 1;
-    }
-    if (channel1.attributes.activated && channel2.attributes.activated) {
-        return channel1.lastMessage.timestamp > channel2.lastMessage.timestamp ? -1 : 1;
-    }
-    if (!channel1.attributes.activated && !channel2.attributes.activated) {
-        return channel1.lastMessage.timestamp < channel2.lastMessage.timestamp ? -1 : 1;
-    }
-    return 0;
-}
-
 
 export {
     countInactiveChats,

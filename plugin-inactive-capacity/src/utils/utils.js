@@ -2,77 +2,6 @@ import { TaskHelper } from '@twilio/flex-ui';
 import FlexState from '../states/FlexState';
 import { ConferenceParticipantTypes, TaskDirections } from './enums';
 
-const baseServerlessUrl = `https://${process.env.REACT_APP_SERVERLESS_DOMAIN}`;
-
-const evaluateCapacity = async () => {
-  const { maxInactiveCapacity, defaultCapacity, activeChats, inactiveChats } = FlexState.capacityState;
-
-  const workerSid = FlexState.workerSid;
-
-  console.log("Capacity State", { maxInactiveCapacity, defaultCapacity, activeChats, inactiveChats, workerSid })
-
-  const requestOptions = {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ maxInactiveCapacity, defaultCapacity, activeChats, inactiveChats, workerSid })
-  };
-  try {
-    const response = await fetch(`${baseServerlessUrl}/updateCapacity`, requestOptions);
-    const data = await response.json();
-    console.log("New Capacity", { newCapacity: data.capacity })
-    return data.capacity;
-  } catch (e) {
-    console.log(e);
-    return e;
-  }
-}
-
-const updateCapacity = async (activeChats, inactiveChats) => {
-  const { maxInactiveCapacity, defaultCapacity } = FlexState.capacityState;
-
-  const workerSid = FlexState.workerSid;
-
-  console.log("Capacities", { maxInactiveCapacity, defaultCapacity, activeChats, inactiveChats, workerSid })
-
-  const requestOptions = {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ maxInactiveCapacity, defaultCapacity, activeChats, inactiveChats, workerSid })
-  };
-  try {
-    const response = await fetch(`${baseServerlessUrl}/updateCapacity`, requestOptions);
-    const data = await response.json();
-    console.log("Capacities", { newCapacity: data.capacity })
-    return data.capacity;
-  } catch (e) {
-    console.log(e);
-    return e;
-  }
-}
-
-const resetCapacity = async () => {
-  const { defaultCapacity } = FlexState.capacityState;
-
-  const workerSid = FlexState.workerSid;
-
-  const requestOptions = {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ defaultCapacity, workerSid })
-  };
-  try {
-    const response = await fetch(`${baseServerlessUrl}/resetCapacity`, requestOptions);
-    const data = await response.json();
-    console.log(data)
-    console.log("Capacities", { newCapacity: data.capacity })
-    return data.capacity;
-  } catch (e) {
-    console.log(e);
-    return e;
-  }
-}
-
-
 // Most of those function are from plugin boilerplate
 const fetchPostUrlEncoded = (body) => ({
   method: 'POST',
@@ -81,8 +10,6 @@ const fetchPostUrlEncoded = (body) => ({
   },
   body: new URLSearchParams(body)
 });
-
-
 
 const msToTime = (duration) => {
   let seconds = parseInt((duration / 1000) % 60);
@@ -146,9 +73,6 @@ const getDurationToNow = (startTime) => {
 
 
 export default {
-  resetCapacity,
-  evaluateCapacity,
-  baseServerlessUrl,
   fetchPostUrlEncoded,
   getDurationToNow,
   hasCustomHoldTime,
