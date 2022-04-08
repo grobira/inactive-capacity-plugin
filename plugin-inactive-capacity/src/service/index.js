@@ -1,3 +1,5 @@
+import FlexState from '../states/FlexState';
+
 const { REACT_APP_API_KEY, REACT_APP_API_SECRET, REACT_APP_WORKSPACE_SID } = process.env;
 
 const getHeaders = () => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { VERSION } from '@twilio/flex-ui';
+import { TaskList, VERSION } from '@twilio/flex-ui';
 import { FlexPlugin } from '@twilio/flex-plugin';
 
 import reducers, { namespace } from './states';
@@ -32,7 +32,24 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
 
     flex.TaskChannels.register(this.createInactiveChatDefinition(flex, manager));
 
-    //this.setTaskListFilters(flex)
+    flex.DefaultTaskChannels.ChatWhatsApp.templates.TaskCard.secondLine = (task) => {
+      console.log("DefaultTaskChannels", task)
+      if (task.attributes.channelSid == "CHd07f710099a046bca4308bffa6519aed") {
+        return "inativo"
+      }
+      return {
+        "Accepted": "SupervisorTaskLive",
+        "Pending": "SupervisorTaskLive",
+        "Wrapping": "SupervisorTaskWrapUp",
+        "Completed": "SupervisorTaskCompleted",
+        "Canceled": "SupervisorTaskCompleted",
+        "Reserved": "SupervisorTaskLive",
+        "Assigned": "SupervisorTaskLive"
+      }
+    }
+
+    this.setTaskListFilters(flex)
+
 
     this.registerReducers(manager);
 
@@ -67,38 +84,54 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
   }
 
   createInactiveChatDefinition(flex, manager) {
-    const inactiveChatChannelDefinition = flex.DefaultTaskChannels.createChatTaskChannel("InactiveChat",
+    const channelDefinition = flex.DefaultTaskChannels.createChatTaskChannel("InactiveChat",
       (task) => task.taskChannelUniqueName === "chat" && task.attributes.activated == false, "Whatsapp", "WhatsappBold", "#afb3a5");
 
-    inactiveChatChannelDefinition.addedComponents = [
-      {
-        target: "TaskListButtons",
-        component: <ActiveBubble
-          key="activeBubble"
-        />,
-        options: { align: "start", sortOrder: 0 }
-      }
-    ]
-    inactiveChatChannelDefinition.templates.TaskListItem.secondLine = (task) => {
-      const channelState = StateHelper.getChatChannelStateForTask(task);
-      const helper = new ChatChannelHelper(channelState);
-      const currentDiff = new Date(new Date().getTime() - task.attributes.inactiveTime)
-      const hours = currentDiff.getHours();
-      const minutes = currentDiff.getMinutes();
-      const seconds = currentDiff.getSeconds();
+    const { templates } = channelDefinition;
+    const inactiveChatChannelDefinition = {
+      ...channelDefinition,
+      templates: {
+        ...templates,
+        TaskListItem: {
+          ...templates?.TaskListItem,
+          secondLine: (task) => {
+            const channelState = StateHelper.getChatChannelStateForTask(task);
+            const helper = new ChatChannelHelper(channelState);
+            const currentDiff = new Date(new Date().getTime() - task.attributes.inactiveTime)
+            const hours = new Date().getHours() - new Date(task.attributes.inactiveTime).getHours()
+            const minutes = currentDiff.getMinutes();
+            const seconds = currentDiff.getSeconds();
 
-      let adicionalInfo = ""
-      if (helper.typers.length) {
-        adicionalInfo = "typing ..."
-      } else if (helper.lastMessage) {
-        adicionalInfo = `${helper.lastMessage.source.authorName ? helper.lastMessage.source.authorName : ""}: ${helper.lastMessage.source.body}`
-      }
+            let adicionalInfo = ""
+            if (helper.typers.length) {
+              adicionalInfo = "typing ..."
+            } else if (helper.lastMessage) {
+              adicionalInfo = `${helper.lastMessage.source.authorName ? helper.lastMessage.source.authorName : ""}: ${helper.lastMessage.source.body}`
+            }
 
-      const timeSinceInactivation = this.formatHours(hours, minutes, seconds)
+            const timeSinceInactivation = this.formatHours(hours, minutes, seconds)
 
-      const fullText = `${timeSinceInactivation} | ${adicionalInfo} `
-      return fullText
-    }
+            const fullText = `${timeSinceInactivation} | ${adicionalInfo} `
+            return fullText
+          }
+        },
+        TaskCard: {
+          ...templates?.TaskCard,
+          secondLine: (task) => {
+            return "inativo";
+          }
+        },
+      },
+      addedComponents: [
+        {
+          target: "TaskListButtons",
+          component: <ActiveBubble
+            key="activeBubble"
+          />,
+          options: { align: "start", sortOrder: 0 }
+        }
+      ]
+    };
 
     return inactiveChatChannelDefinition
   }
@@ -128,23 +161,19 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
       return task.attributes.activated == false
     }
 
-    const activeFilter = flex.TaskListFilter();
+    const activeFilter = new flex.TaskListFilter();
     activeFilter.text = "Active Chats"
     activeFilter.callback = (task) => {
       return task.attributes.activated != false
     }
 
-    flex.TaskListContainer.staticTaskFilter = (task) => task.assignmentStatus === "assigned"
-
-
     flex.TaskListContainer.defaultProps.taskFilters = [
-      activeFilter,
       inactiveFilter,
+      activeFilter
     ]
+    // flex.TaskListContainer.Content.remove("tasklist");
+    // flex.TaskListContainer.Content.add(<TaskList key="activeFilter" filters={[activeFilter]} />, { sortOrder: 1 });
+    // flex.TaskListContainer.Content.add(<TaskList {...TaskList.defaultProps} filters={[inactiveFilter]} key="inactiveFilter" />, { sortOrder: 1 });
 
-    flex.TaskListContainer.defaultTaskFilters = [
-      ...flex.TaskListContainer.defaultTaskFilters,
-      inactiveFilter,
-    ]
   }
 }
