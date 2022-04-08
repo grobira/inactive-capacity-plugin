@@ -1,5 +1,5 @@
 import React from 'react';
-import { VERSION } from '@twilio/flex-ui';
+import { ChatChannelHelper, StateHelper, VERSION } from '@twilio/flex-ui';
 import { FlexPlugin } from '@twilio/flex-plugin';
 
 import reducers, { namespace } from './states';
@@ -27,7 +27,6 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
     registerEventsHandler(flex, manager);
 
     utils.resetCapacity(manager);
-
   }
 
   /**

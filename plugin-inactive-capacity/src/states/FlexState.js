@@ -50,7 +50,7 @@ class FlexState {
     return result;
   }
 
-  get workerCallTasks() {
+  get workerChatTasks() {
     return [...this.workerTasks.values()]
       .filter(task => TaskHelper.isChatBasedTask(task));
   }
