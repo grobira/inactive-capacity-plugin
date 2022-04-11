@@ -1,6 +1,6 @@
 import FlexState from '../states/FlexState';
 
-const { REACT_APP_API_KEY, REACT_APP_API_SECRET, REACT_APP_WORKSPACE_SID } = process.env;
+const { REACT_APP_API_KEY, REACT_APP_API_SECRET, REACT_APP_WORKSPACE_SID, REACT_APP_FLEX_CHAT_SERVICE } = process.env;
 
 const getHeaders = () => {
     return {
@@ -9,14 +9,14 @@ const getHeaders = () => {
     }
 }
 
-const updateTaskApi = async (task, newAttributes) => {
+const updateChannelApi = async (channel, newAttributes) => {
 
-    const url = `https://taskrouter.twilio.com/v1/Workspaces/${REACT_APP_WORKSPACE_SID}/Tasks/${task.taskSid}`
+    const url = `https://chat.twilio.com/v2/Services/${REACT_APP_FLEX_CHAT_SERVICE}/Channels/${channel.source.sid}`
 
     const urlencoded = new URLSearchParams();
     urlencoded.append("Attributes", JSON.stringify(
         {
-            ...task.attributes,
+            ...channel.source.attributes,
             ...newAttributes
         }
     ))
@@ -93,7 +93,7 @@ const fetchJsonWithReject = (url, config, attempts = 0) => {
 }
 
 export {
-    updateTaskApi,
+    updateChannelApi,
     fetchJsonWithReject,
     updateCapacityApi,
     getWorkerChannelsApi,

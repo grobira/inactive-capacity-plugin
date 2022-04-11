@@ -32,24 +32,7 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
 
     flex.TaskChannels.register(this.createInactiveChatDefinition(flex, manager));
 
-    flex.DefaultTaskChannels.ChatWhatsApp.templates.TaskCard.secondLine = (task) => {
-      console.log("DefaultTaskChannels", task)
-      if (task.attributes.channelSid == "CHd07f710099a046bca4308bffa6519aed") {
-        return "inativo"
-      }
-      return {
-        "Accepted": "SupervisorTaskLive",
-        "Pending": "SupervisorTaskLive",
-        "Wrapping": "SupervisorTaskWrapUp",
-        "Completed": "SupervisorTaskCompleted",
-        "Canceled": "SupervisorTaskCompleted",
-        "Reserved": "SupervisorTaskLive",
-        "Assigned": "SupervisorTaskLive"
-      }
-    }
-
     this.setTaskListFilters(flex)
-
 
     this.registerReducers(manager);
 
@@ -85,7 +68,13 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
 
   createInactiveChatDefinition(flex, manager) {
     const channelDefinition = flex.DefaultTaskChannels.createChatTaskChannel("InactiveChat",
-      (task) => task.taskChannelUniqueName === "chat" && task.attributes.activated == false, "Whatsapp", "WhatsappBold", "#afb3a5");
+      (task) => {
+        if (task.taskChannelUniqueName === "chat") {
+          const channel = StateHelper.getChatChannelStateForTask(task);
+          return channel?.source?.attributes.activated == false
+        }
+        return false
+      }, "Whatsapp", "WhatsappBold", "#afb3a5");
 
     const { templates } = channelDefinition;
     const inactiveChatChannelDefinition = {
@@ -97,8 +86,8 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
           secondLine: (task) => {
             const channelState = StateHelper.getChatChannelStateForTask(task);
             const helper = new ChatChannelHelper(channelState);
-            const currentDiff = new Date(new Date().getTime() - task.attributes.inactiveTime)
-            const hours = new Date().getHours() - new Date(task.attributes.inactiveTime).getHours()
+            const currentDiff = new Date(new Date().getTime() - channelState.source.attributes.inactiveTime)
+            const hours = new Date().getHours() - new Date(channelState.source.attributes.inactiveTime).getHours()
             const minutes = currentDiff.getMinutes();
             const seconds = currentDiff.getSeconds();
 
