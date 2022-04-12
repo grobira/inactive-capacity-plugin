@@ -32,7 +32,7 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
 
     flex.TaskChannels.register(this.createInactiveChatDefinition(flex, manager));
 
-    this.setTaskListFilters(flex)
+    // this.setTaskListFilters(flex)
 
     this.registerReducers(manager);
 

@@ -57,7 +57,7 @@ const checkChannelActivity = async (channels) => {
         console.log("ChannelActivity", channel)
 
         const { task } = channel;
-        const activated = channel.source.attributes.activated;
+        const activated = channel.source?.attributes.activated;
         if (!isActive(channel) && (activated == null || activated == true)) {
             // update task to inactive
             console.log("isActive inactive", task)
