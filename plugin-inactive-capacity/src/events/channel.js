@@ -1,26 +1,24 @@
 import FlexStateSingleton from "../states/FlexState"
 import { Actions } from "../states/capacityState"
 import utils from "../utils/utils"
+import { updateChannelApi } from "../service"
 
 
-const inactivatedHandler = (channel) => {
+const inactivatedHandler = async (channel) => {
     FlexStateSingleton.dispatchStoreAction(Actions.deacticateChat())
     utils.evaluateCapacity();
-    channel.updateAttributes({
-        ...channel.attributes,
-        activated: false
-    })
+
+    await updateChannelApi(channel, { activated: false })
+
 }
 
-const messageAddedHandler = (channel, message) => {
+const messageAddedHandler = async (channel, message) => {
     if (channel.attributes.activated == false) {
         FlexStateSingleton.dispatchStoreAction(Actions.reacticateChat())
         // Check for capacity if activeChats == default capacity -> setCapacity to defaultCap + inactiveChats
     }
-    channel.updateAttributes({
-        ...channel.attributes,
-        activated: true
-    })
+
+    await updateChannelApi(channel, { activated: true })
 
     utils.evaluateCapacity();
 }
@@ -63,11 +61,9 @@ const ChannelEventsHandler = async (flex, manager) => {
     })
 
     // Everytime a new chat is assignment to the agent, we need to add some listeners for events
-    manager.chatClient.on("channelAdded", channel => {
-        channel.updateAttributes({
-            ...channel.attributes,
-            activated: true
-        })
+    manager.chatClient.on("channelAdded", async channel => {
+        await updateChannelApi(channel, { activated: true })
+
         FlexStateSingleton.dispatchStoreAction(Actions.increasedActiveChat())
 
 
