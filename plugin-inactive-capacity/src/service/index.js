@@ -11,12 +11,15 @@ const getHeaders = () => {
 
 const updateChannelApi = async (channel, newAttributes) => {
 
-    const url = `https://chat.twilio.com/v2/Services/${REACT_APP_FLEX_CHAT_SERVICE}/Channels/${channel.source.sid}`
+    const sid = channel.sid || channel.source.sid;
+    const attributes = channel.attributes || channel.source.attributes;
+
+    const url = `https://chat.twilio.com/v2/Services/${REACT_APP_FLEX_CHAT_SERVICE}/Channels/${sid}`
 
     const urlencoded = new URLSearchParams();
     urlencoded.append("Attributes", JSON.stringify(
         {
-            ...channel.source.attributes,
+            ...attributes,
             ...newAttributes
         }
     ))
@@ -24,6 +27,20 @@ const updateChannelApi = async (channel, newAttributes) => {
     const config = {
         body: urlencoded,
         method: 'POST',
+        headers: getHeaders()
+    }
+
+    return await fetchJsonWithReject(url, config)
+}
+
+const fetchChannelApi = async (channel) => {
+
+    const sid = channel.sid || channel.source.sid;
+
+    const url = `https://chat.twilio.com/v2/Services/${REACT_APP_FLEX_CHAT_SERVICE}/Channels/${sid}`
+
+    const config = {
+        method: 'GET',
         headers: getHeaders()
     }
 
@@ -97,5 +114,6 @@ export {
     fetchJsonWithReject,
     updateCapacityApi,
     getWorkerChannelsApi,
-    resetCapacityApi
+    resetCapacityApi,
+    fetchChannelApi
 }

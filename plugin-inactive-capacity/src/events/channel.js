@@ -1,7 +1,7 @@
 import FlexStateSingleton from "../states/FlexState"
 import { Actions } from "../states/capacityState"
 import utils from "../utils/utils"
-import { updateChannelApi } from "../service"
+import { updateChannelApi, fetchChannelApi } from "../service"
 
 
 const inactivatedHandler = async (channel) => {
@@ -23,11 +23,11 @@ const messageAddedHandler = async (channel, message) => {
     utils.evaluateCapacity();
 }
 
-const updateHandler = (channel, payload) => {
+const updateHandler = async (channel, payload) => {
     if (payload.updateReasons.includes("attributes") && payload.channel.attributes.status == "INACTIVE") {
         console.log("Chat completado")
-
-        console.log("Capacities", payload.channel.attributes.activated)
+        const activated = await fetchChannelApi(channel);
+        console.log("Capacities - completado", channel.attributes.activated, JSON.parse(activated.attributes))
         if (payload.channel.attributes.activated == false) {
             FlexStateSingleton.dispatchStoreAction(Actions.decreasedInactiveChat())
             // Expired Chat
@@ -58,11 +58,13 @@ const ChannelEventsHandler = async (flex, manager) => {
         channel.on("updated", (payload) => { updateHandler(channel, payload); });
 
         channel.on("messageAdded", (message) => { messageAddedHandler(channel, message) });
+
     })
 
     // Everytime a new chat is assignment to the agent, we need to add some listeners for events
     manager.chatClient.on("channelAdded", async channel => {
         await updateChannelApi(channel, { activated: true })
+        console.log("Capacities - completado", channel.sid)
 
         FlexStateSingleton.dispatchStoreAction(Actions.increasedActiveChat())
 
