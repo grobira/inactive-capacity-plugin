@@ -10,6 +10,7 @@ import { ChatChannelHelper, StateHelper } from "@twilio/flex-ui";
 const PLUGIN_NAME = 'InactiveCapacityPlugin';
 
 import utils from "./utils/utils"
+import registerEventsHandler from './events';
 
 export default class InactiveCapacityPlugin extends FlexPlugin {
   constructor () {
@@ -28,7 +29,6 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
     flex.TaskChannels.register(this.createInactiveChatDefinition(flex, manager));
 
     this.registerReducers(manager);
-
 
     registerEventsHandler(flex, manager);
 
