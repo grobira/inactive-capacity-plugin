@@ -3,13 +3,9 @@ import { TaskList, VERSION } from '@twilio/flex-ui';
 import { FlexPlugin } from '@twilio/flex-plugin';
 
 import reducers, { namespace } from './states';
-import { evaluateInactivity } from "./utils/channels"
-import { evaluateCapacity } from "./utils/capacity"
-import FlexState from './states/FlexState';
-import { Actions } from "./states/capacityState"
-import { ActiveBubble } from './component/activeBubble';
+
+import { ActiveBubble } from './components/activeBubble';
 import { ChatChannelHelper, StateHelper } from "@twilio/flex-ui";
-import { getWorkerChannelsApi, resetCapacityApi } from "./service"
 
 const PLUGIN_NAME = 'InactiveCapacityPlugin';
 
@@ -95,7 +91,17 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
         TaskCard: {
           ...templates?.TaskCard,
           secondLine: (task) => {
-            return "inativo";
+            const channelState = StateHelper.getChatChannelStateForTask(task);
+            const helper = new ChatChannelHelper(channelState);
+            const currentDiff = new Date(new Date().getTime() - channelState.source.attributes.inactiveTime)
+            const hours = new Date().getHours() - new Date(channelState.source.attributes.inactiveTime).getHours()
+            const minutes = currentDiff.getMinutes();
+            const seconds = currentDiff.getSeconds();
+
+            const timeSinceInactivation = this.formatHours(hours, minutes, seconds)
+
+            const fullText = `Inativo | ${timeSinceInactivation}`
+            return fullText
           }
         },
       },
