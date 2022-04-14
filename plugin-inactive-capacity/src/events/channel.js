@@ -2,6 +2,8 @@ import FlexStateSingleton from "../states/FlexState"
 import { Actions } from "../states/capacityState"
 import utils from "../utils/utils"
 import { updateChannelApi, fetchChannelApi } from "../service"
+import { evaluateInactivity } from "../utils/channels"
+import { evaluateCapacity } from "../utils/capacity"
 
 
 const inactivatedHandler = async (channel) => {
@@ -18,31 +20,21 @@ const messageAddedHandler = async (channel, message) => {
         // Check for capacity if activeChats == default capacity -> setCapacity to defaultCap + inactiveChats
     }
 
-    await updateChannelApi(channel, { activated: true })
+    if (channel.attributes.activated != true || channel.attributes.firstReplied != true) {
+        await updateChannelApi(channel, { activated: true, firstReplied: true })
 
-    utils.evaluateCapacity();
+        utils.evaluateCapacity();
+    }
+
 }
 
 const updateHandler = async (channel, payload) => {
     if (payload.updateReasons.includes("attributes") && payload.channel.attributes.status == "INACTIVE") {
-        console.log("Chat completado")
-        const activated = await fetchChannelApi(channel);
-        console.log("Capacities - completado", channel.attributes.activated, JSON.parse(activated.attributes))
-        if (payload.channel.attributes.activated == false) {
-            FlexStateSingleton.dispatchStoreAction(Actions.decreasedInactiveChat())
-            // Expired Chat
-            // Decrease Capacity to inactivateChats+ defaultCapacity
-            // new inactive chat slot shouldnt be replaced with a new chat
-            // RACE CONDICION should be with capacity locked
-        }
-
-        if (payload.channel.attributes.activated == true) {
-            FlexStateSingleton.dispatchStoreAction(Actions.decreaseActiveChat())
-            // Normal Chat completed
-            // No updates, opened slot can be replaced for a new chat
-        }
-
-        utils.evaluateCapacity();
+        const { activeCount,
+            inactiveCount,
+            channels } = evaluateInactivity();
+        FlexStateSingleton.dispatchStoreAction(Actions.updateChats(activeCount, inactiveCount))
+        await evaluateCapacity()
     }
 }
 
@@ -63,8 +55,7 @@ const ChannelEventsHandler = async (flex, manager) => {
 
     // Everytime a new chat is assignment to the agent, we need to add some listeners for events
     manager.chatClient.on("channelAdded", async channel => {
-        await updateChannelApi(channel, { activated: true })
-        console.log("Capacities - completado", channel.sid)
+        await updateChannelApi(channel, { activated: true, firstReplied: false, firstReplyCountdown: new Date().getTime() })
 
         FlexStateSingleton.dispatchStoreAction(Actions.increasedActiveChat())
 
@@ -82,14 +73,7 @@ const ChannelEventsHandler = async (flex, manager) => {
         channel.on("messageAdded", (message) => {
 
             messageAddedHandler(channel, message)
-            // Sample solution to inactivate chats
-            // Check if the channel status still active, if this chat is currently activated and if the message that fired this event will be the last message after x second
-            // setTimeout(() => {
-            //     console.log("Capacities", channel.attributes.status, channel.attributes.activated, message.index, channel.lastMessage.index)
-            //     if (channel.attributes.status == "ACTIVE" && channel.attributes.activated == true && message.index == channel.lastMessage.index) {
-            //         channel.emit("inactivated", channel);
-            //     }
-            // }, 10000)
+
         })
     })
 }

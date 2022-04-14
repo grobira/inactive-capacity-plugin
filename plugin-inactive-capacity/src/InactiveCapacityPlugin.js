@@ -1,6 +1,7 @@
 import React from 'react';
 import { TaskList, VERSION } from '@twilio/flex-ui';
 import { FlexPlugin } from '@twilio/flex-plugin';
+import FlexState from './states/FlexState';
 
 import reducers, { namespace } from './states';
 
@@ -11,6 +12,10 @@ const PLUGIN_NAME = 'InactiveCapacityPlugin';
 
 import utils from "./utils/utils"
 import registerEventsHandler from './events';
+import { evaluateCapacity } from './utils/capacity';
+import { evaluateInactivity } from './utils/channels';
+import { getWorkerChannelsApi } from './service';
+import { Actions } from './states/capacityState';
 
 export default class InactiveCapacityPlugin extends FlexPlugin {
   constructor () {
@@ -27,12 +32,13 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
   async init(flex, manager) {
 
     flex.TaskChannels.register(this.createInactiveChatDefinition(flex, manager));
+    flex.TaskChannels.register(this.createFirstReplyChatDefinition(flex, manager));
 
     this.registerReducers(manager);
 
     registerEventsHandler(flex, manager);
 
-    utils.resetCapacity(manager);
+    await this.initStates();
   }
 
   /**
@@ -119,6 +125,25 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
     return inactiveChatChannelDefinition
   }
 
+  createFirstReplyChatDefinition(flex, manager) {
+    const channelDefinition = flex.DefaultTaskChannels.createChatTaskChannel("FirstReplyCh",
+      (task) => {
+        if (task.taskChannelUniqueName === "chat") {
+          const channel = StateHelper.getChatChannelStateForTask(task);
+
+
+          if (channel?.source?.attributes.firstReplied == false) {
+            const diff = (new Date().getTime() - channel?.source?.attributes.firstReplyCountdown) / 1000;
+            if (diff > 30)
+              return true
+          }
+        }
+        return false
+      }, "Whatsapp", "WhatsappBold", "#ab2727");
+
+    return channelDefinition;
+  }
+
   formatHours(hours, minutes, seconds) {
     let fullHour = "";
 
@@ -129,4 +154,17 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
     return fullHour;
   }
 
+  async initStates() {
+
+    const workerChannel = await getWorkerChannelsApi(FlexState.workerSid);
+
+    FlexState.dispatchStoreAction(Actions.setWorkerChannel(workerChannel.sid));
+    const { workerChannelSid } = FlexState.capacityState;
+
+    const { activeCount,
+      inactiveCount,
+      channels } = evaluateInactivity();
+    FlexState.dispatchStoreAction(Actions.updateChats(activeCount, inactiveCount))
+    await evaluateCapacity()
+  }
 }

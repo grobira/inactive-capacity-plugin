@@ -9,7 +9,6 @@ const evaluateCapacity = async () => {
 
   const workerSid = FlexState.workerSid;
 
-  console.log("Capacities", { maxInactiveCapacity, defaultCapacity, activeChats, inactiveChats, workerSid })
 
   const requestOptions = {
     method: 'POST',
