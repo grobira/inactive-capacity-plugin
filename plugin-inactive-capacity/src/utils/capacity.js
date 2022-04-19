@@ -5,6 +5,8 @@ import { updateCapacityApi } from "../service"
 const evaluateCapacity = async () => {
     const { maxInactiveCapacity, defaultCapacity, activeChats, inactiveChats, workerChannelSid } = FlexState.capacityState;
 
+    const workerSid = FlexState.workerSid
+
     const channel = FlexState.workerChannels.get(workerChannelSid)
     const configuredCapacity = channel.capacity
 

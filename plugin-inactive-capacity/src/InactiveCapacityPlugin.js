@@ -13,7 +13,7 @@ const PLUGIN_NAME = 'InactiveCapacityPlugin';
 import utils from "./utils/utils"
 import registerEventsHandler from './events';
 import { evaluateCapacity } from './utils/capacity';
-import { evaluateInactivity } from './utils/channels';
+import { evaluateInactivity, verifyChannelsFirstReply } from './utils/channels';
 import { getWorkerChannelsApi } from './service';
 import { Actions } from './states/capacityState';
 
@@ -39,6 +39,7 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
     registerEventsHandler(flex, manager);
 
     await this.initStates();
+    this.initFistReplyVerification();
   }
 
   /**
@@ -130,13 +131,7 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
       (task) => {
         if (task.taskChannelUniqueName === "chat") {
           const channel = StateHelper.getChatChannelStateForTask(task);
-
-
-          if (channel?.source?.attributes.firstReplied == false) {
-            const diff = (new Date().getTime() - channel?.source?.attributes.firstReplyCountdown) / 1000;
-            if (diff > 30)
-              return true
-          }
+          return channel?.source?.attributes.firstReplied == false && channel?.source?.attributes.firstReplyExpired == true
         }
         return false
       }, "Whatsapp", "WhatsappBold", "#ab2727");
@@ -166,5 +161,11 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
       channels } = evaluateInactivity();
     FlexState.dispatchStoreAction(Actions.updateChats(activeCount, inactiveCount))
     await evaluateCapacity()
+  }
+
+  initFistReplyVerification() {
+    const timer = setInterval(async () => {
+      await verifyChannelsFirstReply();
+    }, 5000)
   }
 }

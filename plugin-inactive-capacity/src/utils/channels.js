@@ -50,6 +50,36 @@ const getWorkerChannels = () => {
     return channels;
 }
 
+const isFirstReplyed = (channel) => {
+    return channel.source?.attributes.firstReplied;
+}
+
+
+const isFirstReplyedTimeExpired = (channel) => {
+    if (!isFirstReplyed(channel)) {
+        const diff = (new Date().getTime() - channel?.source?.attributes.firstReplyCountdown) / 1000;
+        if (diff > 30)
+            return true
+    }
+    return false
+}
+
+const verifyChannelsFirstReply = async () => {
+
+    const channels = getWorkerChannels();
+    const channelsToUpdate = channels.filter(channel => {
+        return isFirstReplyedTimeExpired(channel);
+    })
+
+    const channelsPromises = channelsToUpdate.map(async channel => {
+        return await updateChannelApi(channel, {
+            firstReplyExpired: true
+        })
+    })
+
+    return await Promise.all(channelsPromises)
+}
+
 const checkChannelActivity = async (channels) => {
     const channelsPromises = channels.map(async channel => {
 
@@ -91,4 +121,5 @@ export {
     isActive,
     getWorkerChannels,
     evaluateInactivity,
+    verifyChannelsFirstReply
 }
