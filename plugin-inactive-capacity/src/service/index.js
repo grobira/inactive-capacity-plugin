@@ -1,4 +1,6 @@
-const { REACT_APP_API_KEY, REACT_APP_API_SECRET, REACT_APP_WORKSPACE_SID } = process.env;
+import FlexState from '../states/FlexState';
+
+const { REACT_APP_API_KEY, REACT_APP_API_SECRET, REACT_APP_WORKSPACE_SID, REACT_APP_FLEX_CHAT_SERVICE } = process.env;
 
 const getHeaders = () => {
     return {
@@ -7,14 +9,17 @@ const getHeaders = () => {
     }
 }
 
-const updateTaskApi = async (task, newAttributes) => {
+const updateChannelApi = async (channel, newAttributes) => {
 
-    const url = `https://taskrouter.twilio.com/v1/Workspaces/${REACT_APP_WORKSPACE_SID}/Tasks/${task.taskSid}`
+    const sid = channel.sid || channel.source.sid;
+    const attributes = channel.attributes || channel.source.attributes;
+
+    const url = `https://chat.twilio.com/v2/Services/${REACT_APP_FLEX_CHAT_SERVICE}/Channels/${sid}`
 
     const urlencoded = new URLSearchParams();
     urlencoded.append("Attributes", JSON.stringify(
         {
-            ...task.attributes,
+            ...attributes,
             ...newAttributes
         }
     ))
@@ -22,6 +27,20 @@ const updateTaskApi = async (task, newAttributes) => {
     const config = {
         body: urlencoded,
         method: 'POST',
+        headers: getHeaders()
+    }
+
+    return await fetchJsonWithReject(url, config)
+}
+
+const fetchChannelApi = async (channel) => {
+
+    const sid = channel.sid || channel.source.sid;
+
+    const url = `https://chat.twilio.com/v2/Services/${REACT_APP_FLEX_CHAT_SERVICE}/Channels/${sid}`
+
+    const config = {
+        method: 'GET',
         headers: getHeaders()
     }
 
@@ -91,9 +110,10 @@ const fetchJsonWithReject = (url, config, attempts = 0) => {
 }
 
 export {
-    updateTaskApi,
+    updateChannelApi,
     fetchJsonWithReject,
     updateCapacityApi,
     getWorkerChannelsApi,
-    resetCapacityApi
+    resetCapacityApi,
+    fetchChannelApi
 }

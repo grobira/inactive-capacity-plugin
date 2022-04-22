@@ -1,6 +1,6 @@
 import FlexStateSingleton from "../states/FlexState"
 import { ChatChannelHelper, StateHelper } from "@twilio/flex-ui";
-import { updateTaskApi } from "../service";
+import { updateChannelApi } from "../service";
 
 const TIME_FOR_INACTIVE = process.env.REACT_APP_TIME_FOR_INACTIVE || 1;
 
@@ -31,7 +31,7 @@ const isActive = (channel) => {
 
 const isActivated = (channel) => {
     const { task } = channel;
-    return (task.attributes.activated == true || task.attributes.activated == null) && (!isTimerPausedForTask(task));
+    return (channel.source?.attributes.activated == true || channel.source?.attributes.activated == null) && (!isTimerPausedForTask(task));
 }
 
 const getWorkerChannels = () => {
@@ -50,25 +50,52 @@ const getWorkerChannels = () => {
     return channels;
 }
 
+const isFirstReplyed = (channel) => {
+    return channel.source?.attributes.firstReplied;
+}
+
+
+const isFirstReplyedTimeExpired = (channel) => {
+    if (!isFirstReplyed(channel)) {
+        const diff = (new Date().getTime() - channel?.source?.attributes.firstReplyCountdown) / 1000;
+        if (diff > 30)
+            return true
+    }
+    return false
+}
+
+const verifyChannelsFirstReply = async () => {
+
+    const channels = getWorkerChannels();
+    const channelsToUpdate = channels.filter(channel => {
+        return isFirstReplyedTimeExpired(channel);
+    })
+
+    const channelsPromises = channelsToUpdate.map(async channel => {
+        return await updateChannelApi(channel, {
+            firstReplyExpired: true
+        })
+    })
+
+    return await Promise.all(channelsPromises)
+}
+
 const checkChannelActivity = async (channels) => {
     const channelsPromises = channels.map(async channel => {
-        console.log("ChannelActivity", channel)
 
         const { task } = channel;
-        const activated = task.attributes.activated;
+        const activated = channel.source?.attributes.activated;
         if (!isActive(channel) && (activated == null || activated == true)) {
             // update task to inactive
-            console.log("isActive inactive", task)
 
-            await updateTaskApi(task, {
+            await updateChannelApi(channel, {
                 activated: false,
                 inactiveTime: new Date().getTime()
             })
         } else if (isActive(channel) && activated == false) {
             // await update task to active
-            console.log("isActive", task)
 
-            await updateTaskApi(task, {
+            await updateChannelApi(channel, {
                 activated: true
             })
         }
@@ -80,18 +107,12 @@ const checkChannelActivity = async (channels) => {
 const evaluateInactivity = () => {
 
     const channels = getWorkerChannels();
-    checkChannelActivity(channels)
+    // checkChannelActivity(channels)
     return {
         activeCount: countActiveChats(channels),
         inactiveCount: countInactiveChats(channels),
         channels
     }
-}
-
-const orderByLastMessage = (channel1, channel2) => {
-    if (channel1.lastMessage.timestamp > channel2.lastMessage.timestamp) return -1;
-    if (channel1.lastMessage.timestamp < channel2.lastMessage.timestamp) return 1;
-    return 0;
 }
 
 export {
@@ -100,5 +121,5 @@ export {
     isActive,
     getWorkerChannels,
     evaluateInactivity,
-    orderByLastMessage
+    verifyChannelsFirstReply
 }

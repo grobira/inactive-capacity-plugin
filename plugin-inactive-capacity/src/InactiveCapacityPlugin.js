@@ -1,20 +1,19 @@
 import React from 'react';
-import { VERSION } from '@twilio/flex-ui';
+import { TaskList, VERSION } from '@twilio/flex-ui';
 import { FlexPlugin } from '@twilio/flex-plugin';
+import FlexState from './states/FlexState';
 
 import reducers, { namespace } from './states';
-import { evaluateInactivity } from "./utils/channels"
-import { evaluateCapacity } from "./utils/capacity"
-import FlexState from './states/FlexState';
-import { Actions } from "./states/capacityState"
-import { ActiveBubble } from './component/activeBubble';
-import { ChatChannelHelper, StateHelper } from "@twilio/flex-ui";
-import { getWorkerChannelsApi, resetCapacityApi } from "./service"
 
+import { ActiveBubble } from './components/activeBubble';
+import { ChatChannelHelper, StateHelper } from "@twilio/flex-ui";
 
 const PLUGIN_NAME = 'InactiveCapacityPlugin';
 
-const UPDATE_FREQ = process.env.REACT_APP_UPDATE_FREQ || 10000;
+import { evaluateCapacity } from './utils/capacity';
+import { evaluateInactivity, verifyChannelsFirstReply } from './utils/channels';
+import { getWorkerChannelsApi } from './service';
+import { Actions } from './states/capacityState';
 
 export default class InactiveCapacityPlugin extends FlexPlugin {
   constructor () {
@@ -31,24 +30,13 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
   async init(flex, manager) {
 
     flex.TaskChannels.register(this.createInactiveChatDefinition(flex, manager));
-
-    //this.setTaskListFilters(flex)
+    flex.TaskChannels.register(this.createFirstReplyChatDefinition(flex, manager));
 
     this.registerReducers(manager);
 
-    await this.initState();
+    await this.initStates();
 
-
-    // Loop to verify how many chat are active/inactive
-    // Update the state with the results
-    // Call Function to check logic and update worker capacity
-    setInterval(async () => {
-      const { activeCount,
-        inactiveCount,
-        channels } = evaluateInactivity();
-      FlexState.dispatchStoreAction(Actions.updateChats(activeCount, inactiveCount))
-      await evaluateCapacity()
-    }, UPDATE_FREQ)
+    this.initFistReplyVerification();
   }
 
   /**
@@ -67,40 +55,85 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
   }
 
   createInactiveChatDefinition(flex, manager) {
-    const inactiveChatChannelDefinition = flex.DefaultTaskChannels.createChatTaskChannel("InactiveChat",
-      (task) => task.taskChannelUniqueName === "chat" && task.attributes.activated == false, "Whatsapp", "WhatsappBold", "#afb3a5");
+    const channelDefinition = flex.DefaultTaskChannels.createChatTaskChannel("InactiveChat",
+      (task) => {
+        if (task.taskChannelUniqueName === "chat") {
+          const channel = StateHelper.getChatChannelStateForTask(task);
+          return channel?.source?.attributes.activated == false
+        }
+        return false
+      }, "Whatsapp", "WhatsappBold", "#afb3a5");
 
-    inactiveChatChannelDefinition.addedComponents = [
-      {
-        target: "TaskListButtons",
-        component: <ActiveBubble
-          key="activeBubble"
-        />,
-        options: { align: "start", sortOrder: 0 }
-      }
-    ]
-    inactiveChatChannelDefinition.templates.TaskListItem.secondLine = (task) => {
-      const channelState = StateHelper.getChatChannelStateForTask(task);
-      const helper = new ChatChannelHelper(channelState);
-      const currentDiff = new Date(new Date().getTime() - task.attributes.inactiveTime)
-      const hours = currentDiff.getHours();
-      const minutes = currentDiff.getMinutes();
-      const seconds = currentDiff.getSeconds();
+    const { templates } = channelDefinition;
+    const inactiveChatChannelDefinition = {
+      ...channelDefinition,
+      templates: {
+        ...templates,
+        TaskListItem: {
+          ...templates?.TaskListItem,
+          secondLine: (task) => {
+            const channelState = StateHelper.getChatChannelStateForTask(task);
+            const helper = new ChatChannelHelper(channelState);
+            const currentDiff = new Date(new Date().getTime() - channelState.source.attributes.inactiveTime)
+            const hours = new Date().getHours() - new Date(channelState.source.attributes.inactiveTime).getHours()
+            const minutes = currentDiff.getMinutes();
+            const seconds = currentDiff.getSeconds();
 
-      let adicionalInfo = ""
-      if (helper.typers.length) {
-        adicionalInfo = "typing ..."
-      } else if (helper.lastMessage) {
-        adicionalInfo = `${helper.lastMessage.source.authorName ? helper.lastMessage.source.authorName : ""}: ${helper.lastMessage.source.body}`
-      }
+            let adicionalInfo = ""
+            if (helper.typers.length) {
+              adicionalInfo = "typing ..."
+            } else if (helper.lastMessage) {
+              adicionalInfo = `${helper.lastMessage.source.authorName ? helper.lastMessage.source.authorName : ""}: ${helper.lastMessage.source.body}`
+            }
 
-      const timeSinceInactivation = this.formatHours(hours, minutes, seconds)
+            const timeSinceInactivation = this.formatHours(hours, minutes, seconds)
 
-      const fullText = `${timeSinceInactivation} | ${adicionalInfo} `
-      return fullText
-    }
+            const fullText = `${timeSinceInactivation} | ${adicionalInfo} `
+            return fullText
+          }
+        },
+        TaskCard: {
+          ...templates?.TaskCard,
+          secondLine: (task) => {
+            const channelState = StateHelper.getChatChannelStateForTask(task);
+            const helper = new ChatChannelHelper(channelState);
+            const currentDiff = new Date(new Date().getTime() - channelState.source.attributes.inactiveTime)
+            const hours = new Date().getHours() - new Date(channelState.source.attributes.inactiveTime).getHours()
+            const minutes = currentDiff.getMinutes();
+            const seconds = currentDiff.getSeconds();
+
+            const timeSinceInactivation = this.formatHours(hours, minutes, seconds)
+
+            const fullText = `Inativo | ${timeSinceInactivation}`
+            return fullText
+          }
+        },
+      },
+      addedComponents: [
+        {
+          target: "TaskListButtons",
+          component: <ActiveBubble
+            key="activeBubble"
+          />,
+          options: { align: "start", sortOrder: 0 }
+        }
+      ]
+    };
 
     return inactiveChatChannelDefinition
+  }
+
+  createFirstReplyChatDefinition(flex, manager) {
+    const channelDefinition = flex.DefaultTaskChannels.createChatTaskChannel("FirstReplyCh",
+      (task) => {
+        if (task.taskChannelUniqueName === "chat") {
+          const channel = StateHelper.getChatChannelStateForTask(task);
+          return channel?.source?.attributes.firstReplied == false && channel?.source?.attributes.firstReplyExpired == true
+        }
+        return false
+      }, "Whatsapp", "WhatsappBold", "#ab2727");
+
+    return channelDefinition;
   }
 
   formatHours(hours, minutes, seconds) {
@@ -113,38 +146,23 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
     return fullHour;
   }
 
-  async initState() {
+  async initStates() {
+
     const workerChannel = await getWorkerChannelsApi(FlexState.workerSid);
 
     FlexState.dispatchStoreAction(Actions.setWorkerChannel(workerChannel.sid));
+    const { workerChannelSid } = FlexState.capacityState;
 
-    await resetCapacityApi()
+    const { activeCount,
+      inactiveCount,
+      channels } = evaluateInactivity();
+    FlexState.dispatchStoreAction(Actions.updateChats(activeCount, inactiveCount))
+    await evaluateCapacity()
   }
 
-  setTaskListFilters(flex) {
-    const inactiveFilter = new flex.TaskListFilter();
-    inactiveFilter.text = "Inactive Chats"
-    inactiveFilter.callback = (task) => {
-      return task.attributes.activated == false
-    }
-
-    const activeFilter = flex.TaskListFilter();
-    activeFilter.text = "Active Chats"
-    activeFilter.callback = (task) => {
-      return task.attributes.activated != false
-    }
-
-    flex.TaskListContainer.staticTaskFilter = (task) => task.assignmentStatus === "assigned"
-
-
-    flex.TaskListContainer.defaultProps.taskFilters = [
-      activeFilter,
-      inactiveFilter,
-    ]
-
-    flex.TaskListContainer.defaultTaskFilters = [
-      ...flex.TaskListContainer.defaultTaskFilters,
-      inactiveFilter,
-    ]
+  initFistReplyVerification() {
+    const timer = setInterval(async () => {
+      await verifyChannelsFirstReply();
+    }, 5000)
   }
 }
