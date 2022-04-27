@@ -14,6 +14,7 @@ import { evaluateCapacity } from './utils/capacity';
 import { evaluateInactivity, verifyChannelsFirstReply } from './utils/channels';
 import { getWorkerChannelsApi } from './service';
 import { Actions } from './states/capacityState';
+import ChannelEventsHandler from './events/channel';
 
 export default class InactiveCapacityPlugin extends FlexPlugin {
   constructor () {
@@ -37,6 +38,8 @@ export default class InactiveCapacityPlugin extends FlexPlugin {
     await this.initStates();
 
     this.initFistReplyVerification();
+    ChannelEventsHandler(flex, manager)
+
   }
 
   /**

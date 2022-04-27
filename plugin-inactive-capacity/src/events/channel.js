@@ -8,9 +8,9 @@ import { evaluateCapacity } from "../utils/capacity"
 
 const inactivatedHandler = async (channel) => {
     FlexStateSingleton.dispatchStoreAction(Actions.deacticateChat())
-    utils.evaluateCapacity();
+    evaluateCapacity();
 
-    await updateChannelApi(channel, { activated: false })
+    await updateChannelApi(channel, { activated: false, inactiveTime: new Date().getTime() })
 
 }
 
@@ -23,9 +23,8 @@ const messageAddedHandler = async (channel, message) => {
     if (channel.attributes.activated != true || channel.attributes.firstReplied != true) {
         await updateChannelApi(channel, { activated: true, firstReplied: true })
 
-        utils.evaluateCapacity();
+        evaluateCapacity();
     }
-
 }
 
 const updateHandler = async (channel, payload) => {
